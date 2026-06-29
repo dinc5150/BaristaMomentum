@@ -4,6 +4,9 @@ import { customElement, state } from 'lit/decorators.js';
 /** localStorage key under which the user's API key is persisted. */
 const API_KEY_STORAGE_KEY = 'apiKey';
 
+/** localStorage key under which the sign-in email (credential "username") is persisted. */
+const LOGIN_EMAIL_STORAGE_KEY = 'apiKeyEmail';
+
 /** localStorage key under which all form settings are persisted. */
 const SETTINGS_STORAGE_KEY = 'coffeeAdvisorSettings';
 
@@ -354,6 +357,10 @@ export class CoffeeAdvisorApp extends LitElement {
   // expanded/collapsed state survives a refresh.
   @state() private _settings: Settings = this._loadSettings();
 
+  // Sign-in email, used as the credential "username" so the browser's password
+  // manager will offer to save/fill the API key. Prefilled from localStorage.
+  @state() private _loginEmail = localStorage.getItem(LOGIN_EMAIL_STORAGE_KEY) ?? '';
+
   render() {
     return this._apiKey ? this._renderApp() : this._renderLogin();
   }
@@ -364,6 +371,18 @@ export class CoffeeAdvisorApp extends LitElement {
         <h1>Sign in</h1>
         <p class="subtitle">Enter your API key to access the espresso advisor.</p>
         <form class="signin" @submit=${this._onLoginSubmit}>
+          <div class="field">
+            <label for="login-email">Email</label>
+            <input
+              id="login-email"
+              name="email"
+              type="email"
+              autocomplete="username"
+              required
+              .value=${this._loginEmail}
+              placeholder="you@example.com"
+            />
+          </div>
           <div class="field">
             <label for="api-key">API key</label>
             <input
@@ -565,14 +584,53 @@ export class CoffeeAdvisorApp extends LitElement {
   private _onLoginSubmit(event: SubmitEvent) {
     event.preventDefault();
     const form = event.currentTarget as HTMLFormElement;
-    const key = new FormData(form).get('apiKey')?.toString().trim() ?? '';
+    const data = new FormData(form);
+    const email = data.get('email')?.toString().trim() ?? '';
+    const key = data.get('apiKey')?.toString().trim() ?? '';
     if (!key) {
       this._error = 'Please enter an API key.';
       return;
     }
     localStorage.setItem(API_KEY_STORAGE_KEY, key);
+    if (email) localStorage.setItem(LOGIN_EMAIL_STORAGE_KEY, email);
+    this._loginEmail = email;
     this._error = '';
     this._apiKey = key;
+
+    // Ask the browser's password manager to remember the credential. Fire and
+    // forget: unsupported browsers / a declined prompt are non-fatal.
+    void this._saveCredential(email, key);
+  }
+
+  /**
+   * Uses the Credential Management API to prompt the browser to save the
+   * email + API key. Only Chromium browsers implement PasswordCredential;
+   * elsewhere this is a no-op and the native form heuristic takes over.
+   * Requires a secure context (HTTPS or localhost).
+   */
+  private async _saveCredential(email: string, key: string) {
+    try {
+      const Ctor = (
+        window as unknown as {
+          PasswordCredential?: new (data: {
+            id: string;
+            password: string;
+            name?: string;
+          }) => Credential;
+        }
+      ).PasswordCredential;
+
+      if (!Ctor || !navigator.credentials) return;
+
+      const credential = new Ctor({
+        id: email || 'barista',
+        password: key,
+        name: 'Espresso Shot Advisor',
+      });
+      await navigator.credentials.store(credential);
+    } catch {
+      // Browser declined or doesn't support storing credentials — ignore.
+    }
   }
 
   private _signOut() {
