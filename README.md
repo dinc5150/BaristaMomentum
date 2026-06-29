@@ -4,8 +4,46 @@ A minimal, deployable starter for [Azure Static Web Apps](https://learn.microsof
 
 - **Frontend:** [Lit](https://lit.dev/) web components built with [Vite](https://vitejs.dev/) (TypeScript).
 - **API:** C# Azure Functions (.NET 8 isolated worker), exposed as the SWA managed API.
-- **Endpoint:** `GET /api/hello` → returns the plain string `Hello World`.
+- **Endpoints:**
+  - `GET /api/hello` → returns the plain string `Hello World`.
+  - `POST /api/coffee/recommendations` → accepts a described espresso shot and returns AI advice (markdown) via **Azure OpenAI**.
 - **Security:** **every** API request must include a valid `x-api-key` header, enforced by middleware.
+
+## Espresso Shot Advisor
+
+The frontend renders a form (`coffee-advisor-app`) describing a single espresso shot:
+beans, machine configuration, extraction numbers, the result, and an optional **Advanced**
+section of sensory notes (crema, shot flow, aroma, taste & mouthfeel). It POSTs the data to
+`POST /api/coffee/recommendations`.
+
+On the server, `CoffeeAdvisorService` validates the input and builds a barista prompt, then
+`OpenAiService` (a thin wrapper over the `Azure.AI.OpenAI` chat client) calls your Azure OpenAI
+deployment. The response is markdown advice on how to improve the next pull.
+
+These settings are required (alongside `API_KEY`):
+
+| Setting | Local file | Azure |
+| ------- | ---------- | ----- |
+| `AZURE_OPENAI_ENDPOINT` | `api/local.settings.json` | SWA → *Configuration* |
+| `AZURE_OPENAI_API_KEY` | `api/local.settings.json` | SWA → *Configuration* |
+| `AZURE_OPENAI_DEPLOYMENT` | `api/local.settings.json` | SWA → *Configuration* |
+
+`AZURE_OPENAI_DEPLOYMENT` is the **deployment name** of a chat model (e.g. `gpt-4o`) in your
+Azure OpenAI resource — not the model id.
+
+### Smoke test
+
+```bash
+curl -i -X POST http://localhost:7071/api/coffee/recommendations \
+  -H "x-api-key: local-dev-secret-change-me" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "beans": { "roastDate": "2026-06-20", "roastLevel": "Medium" },
+    "configuration": { "shots": 2, "machine": "Breville Barista Pro", "waterTemperatureC": 93 },
+    "extraction": { "doseGrams": 18, "yieldGrams": 36, "timeSeconds": 22 },
+    "result": { "description": "Sour and thin, ran fast with pale crema." }
+  }'
+```
 
 ```
 .
@@ -17,7 +55,7 @@ A minimal, deployable starter for [Azure Static Web Apps](https://learn.microsof
 │  ├─ local.settings.json            # local secrets (gitignored)
 │  └─ HelloWorldApi.csproj
 ├─ app/                       # Vite + Lit frontend
-│  ├─ src/hello-world-app.ts
+│  ├─ src/coffee-advisor-app.ts
 │  ├─ src/main.ts
 │  ├─ index.html
 │  └─ package.json

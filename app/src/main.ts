@@ -1,1 +1,1 @@
-import './hello-world-app.js';
+import './coffee-advisor-app.js';
