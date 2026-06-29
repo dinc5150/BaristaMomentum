@@ -111,15 +111,29 @@ const DEFAULT_SETTINGS: Settings = {
 export class CoffeeAdvisorApp extends LitElement {
   static styles = css`
     :host {
+      /* Coffee palette */
+      --bg: #f7efe4; /* latte foam */
+      --surface: #fffdf9; /* cream (inputs) */
+      --ink: #3a2a1e; /* dark roast (text) */
+      --muted: #927a64; /* milky brown (secondary text) */
+      --border: #e4d5c1; /* tan */
+      --field-border: #d8c5ac; /* deeper tan */
+      --accent: #6f4e37; /* espresso */
+      --accent-strong: #553a28; /* dark espresso (hover) */
+      --accent-soft: #efe3d3; /* soft crema wash (hover bg) */
+      --crema: #a9762f; /* caramel (highlights) */
+      --err: #b23a2e; /* burnt sienna */
+
       display: block;
       max-width: 44rem;
       margin: 3rem auto;
       padding: 2rem;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      color: #1f2933;
-      border: 1px solid #e4e7eb;
+      color: var(--ink);
+      background: var(--bg);
+      border: 1px solid var(--border);
       border-radius: 12px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+      box-shadow: 0 6px 20px rgba(58, 42, 30, 0.14);
     }
 
     h1 {
@@ -129,7 +143,7 @@ export class CoffeeAdvisorApp extends LitElement {
 
     p.subtitle {
       margin: 0 0 1.5rem;
-      color: #616e7c;
+      color: var(--muted);
     }
 
     form {
@@ -139,7 +153,7 @@ export class CoffeeAdvisorApp extends LitElement {
     }
 
     fieldset {
-      border: 1px solid #e4e7eb;
+      border: 1px solid var(--border);
       border-radius: 10px;
       padding: 1rem 1.25rem 1.25rem;
     }
@@ -147,6 +161,7 @@ export class CoffeeAdvisorApp extends LitElement {
     legend {
       font-weight: 700;
       padding: 0 0.4rem;
+      color: var(--accent);
     }
 
     .grid {
@@ -168,7 +183,7 @@ export class CoffeeAdvisorApp extends LitElement {
 
     .value {
       font-weight: 700;
-      color: #3b5bdb;
+      color: var(--crema);
     }
 
     input,
@@ -176,21 +191,23 @@ export class CoffeeAdvisorApp extends LitElement {
     textarea {
       font: inherit;
       padding: 0.5rem 0.65rem;
-      border: 1px solid #cbd2d9;
+      border: 1px solid var(--field-border);
       border-radius: 8px;
-      background: #fff;
+      background: var(--surface);
+      color: var(--ink);
     }
 
     input[type='range'] {
       padding: 0;
+      accent-color: var(--accent);
     }
 
     input:focus,
     select:focus,
     textarea:focus {
-      outline: 2px solid #3b5bdb;
+      outline: 2px solid var(--accent);
       outline-offset: 1px;
-      border-color: #3b5bdb;
+      border-color: var(--accent);
     }
 
     textarea {
@@ -199,9 +216,13 @@ export class CoffeeAdvisorApp extends LitElement {
     }
 
     details {
-      border: 1px solid #e4e7eb;
+      border: 1px solid var(--border);
       border-radius: 10px;
       padding: 0.5rem 1rem;
+    }
+
+    summary {
+      color: var(--accent);
     }
 
     details[open] {
@@ -229,30 +250,30 @@ export class CoffeeAdvisorApp extends LitElement {
       font: inherit;
       font-weight: 600;
       padding: 0.7rem 1.4rem;
-      color: #fff;
-      background: #3b5bdb;
+      color: #fff7ee;
+      background: var(--accent);
       border: none;
       border-radius: 8px;
       cursor: pointer;
     }
 
     button[type='submit']:hover:not(:disabled) {
-      background: #364fc7;
+      background: var(--accent-strong);
     }
 
     button.secondary {
       font: inherit;
       font-weight: 600;
       padding: 0.7rem 1.4rem;
-      color: #3b5bdb;
-      background: #fff;
-      border: 1px solid #3b5bdb;
+      color: var(--accent);
+      background: var(--surface);
+      border: 1px solid var(--accent);
       border-radius: 8px;
       cursor: pointer;
     }
 
     button.secondary:hover:not(:disabled) {
-      background: #eef1fc;
+      background: var(--accent-soft);
     }
 
     button:disabled {
@@ -262,13 +283,17 @@ export class CoffeeAdvisorApp extends LitElement {
 
     button.link {
       background: none;
-      color: #616e7c;
+      color: var(--muted);
       border: none;
       padding: 0;
       font: inherit;
       font-weight: 500;
       text-decoration: underline;
       cursor: pointer;
+    }
+
+    button.link:hover {
+      color: var(--accent);
     }
 
     .toolbar {
@@ -283,13 +308,14 @@ export class CoffeeAdvisorApp extends LitElement {
     }
 
     .err {
-      color: #c92a2a;
+      color: var(--err);
       font-weight: 600;
     }
 
     .recommendations {
-      background: #f7f9fc;
-      border: 1px solid #e4e7eb;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--accent);
       border-radius: 10px;
       padding: 1rem 1.25rem;
       line-height: 1.5;
@@ -301,6 +327,7 @@ export class CoffeeAdvisorApp extends LitElement {
 
     .recommendations h2 {
       font-size: 1.1rem;
+      color: var(--accent);
     }
 
     /* Sign-in screen */
