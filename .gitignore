@@ -1,0 +1,18 @@
+# --- Node / Vite (app) ---
+node_modules/
+app/dist/
+app/.env
+app/.env.local
+*.local
+
+# --- .NET / Azure Functions (api) ---
+bin/
+obj/
+api/local.settings.json
+
+# --- Editor / OS ---
+.vs/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
