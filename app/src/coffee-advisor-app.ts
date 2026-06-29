@@ -4,6 +4,9 @@ import { customElement, state } from 'lit/decorators.js';
 /** localStorage key under which the user's API key is persisted. */
 const API_KEY_STORAGE_KEY = 'apiKey';
 
+/** localStorage key under which all form settings are persisted. */
+const SETTINGS_STORAGE_KEY = 'coffeeAdvisorSettings';
+
 /** Option lists for the select / radio inputs. */
 const ROAST_LEVELS = ['Light', 'Medium', 'Dark'] as const;
 const CREMA_COLOURS = [
@@ -34,6 +37,69 @@ const ACIDITY = ['Balanced', 'Bright', 'Sharp / Sour', 'Flat'] as const;
 const BITTERNESS = ['Clean', 'Balanced', 'Harsh', 'Burnt'] as const;
 const BODY = ['Silky', 'Medium', 'Thin', 'Astringent'] as const;
 const AFTERTASTE = ['Pleasant', 'Neutral', 'Dry', 'Bitter', 'Sour'] as const;
+
+/** Every value the user can set on the form. Persisted to localStorage as a whole. */
+interface Settings {
+  // Beans
+  roastDate: string;
+  roastLevel: string;
+  // Configuration
+  shots: string;
+  machine: string;
+  waterTemperatureC: number;
+  // Extraction
+  doseGrams: number;
+  yieldGrams: number;
+  timeSeconds: number;
+  // Result
+  resultDescription: string;
+  // Advanced — Crema
+  cremaColour: string;
+  cremaThickness: string;
+  cremaPersistence: string;
+  cremaTexture: string;
+  // Advanced — Shot
+  initialDrip: string;
+  blondingTiming: string;
+  // Advanced — Aroma
+  aromaQuality: string;
+  aromaIntensity: string;
+  // Advanced — Taste & Mouthfeel
+  sweetness: string;
+  acidity: string;
+  bitterness: string;
+  body: string;
+  aftertaste: string;
+  // UI
+  advancedOpen: boolean;
+}
+
+/** The default value for every setting; also what the "Reset defaults" button restores. */
+const DEFAULT_SETTINGS: Settings = {
+  roastDate: '',
+  roastLevel: 'Medium',
+  shots: '2',
+  machine: '',
+  waterTemperatureC: 93,
+  doseGrams: 18,
+  yieldGrams: 36,
+  timeSeconds: 28,
+  resultDescription: '',
+  cremaColour: 'Golden caramel',
+  cremaThickness: CREMA_THICKNESS[0],
+  cremaPersistence: CREMA_PERSISTENCE[0],
+  cremaTexture: CREMA_TEXTURE[0],
+  initialDrip: INITIAL_DRIP[0],
+  blondingTiming: BLONDING_TIMING[0],
+  aromaQuality: AROMA_QUALITY[0],
+  aromaIntensity: AROMA_INTENSITY[0],
+  sweetness: SWEETNESS[0],
+  acidity: ACIDITY[0],
+  bitterness: BITTERNESS[0],
+  body: BODY[0],
+  aftertaste: AFTERTASTE[0],
+  advancedOpen: false,
+};
 
 /**
  * Espresso shot advisor. After API-key sign-in it renders a form describing a
@@ -152,6 +218,13 @@ export class CoffeeAdvisorApp extends LitElement {
       margin-top: 1rem;
     }
 
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+    }
+
     button[type='submit'] {
       font: inherit;
       font-weight: 600;
@@ -161,11 +234,25 @@ export class CoffeeAdvisorApp extends LitElement {
       border: none;
       border-radius: 8px;
       cursor: pointer;
-      align-self: flex-start;
     }
 
     button[type='submit']:hover:not(:disabled) {
       background: #364fc7;
+    }
+
+    button.secondary {
+      font: inherit;
+      font-weight: 600;
+      padding: 0.7rem 1.4rem;
+      color: #3b5bdb;
+      background: #fff;
+      border: 1px solid #3b5bdb;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    button.secondary:hover:not(:disabled) {
+      background: #eef1fc;
     }
 
     button:disabled {
@@ -230,15 +317,10 @@ export class CoffeeAdvisorApp extends LitElement {
   @state() private _error = '';
   @state() private _recommendations = '';
 
-  // Whether the optional "Advanced" section is expanded. When collapsed, the
-  // advanced fields are sent to the API as null and excluded from the AI prompt.
-  @state() private _advancedOpen = false;
-
-  // Live values for the sliders (kept in state so the displayed number updates).
-  @state() private _waterTemp = 93;
-  @state() private _dose = 18;
-  @state() private _yield = 36;
-  @state() private _time = 28;
+  // All form settings, loaded from localStorage (merged over defaults) and
+  // re-persisted on every change. `advancedOpen` lives here too so the
+  // expanded/collapsed state survives a refresh.
+  @state() private _settings: Settings = this._loadSettings();
 
   render() {
     return this._apiKey ? this._renderApp() : this._renderLogin();
@@ -280,39 +362,43 @@ export class CoffeeAdvisorApp extends LitElement {
             <div class="grid">
               <div class="field">
                 <label for="roastDate">Roast date</label>
-                <input id="roastDate" name="roastDate" type="date" />
+                <input
+                  id="roastDate"
+                  type="date"
+                  .value=${this._settings.roastDate}
+                  @input=${(e: Event) =>
+                    this._updateSetting('roastDate', (e.target as HTMLInputElement).value)}
+                />
               </div>
-              ${this._select('roastLevel', 'Roast level', ROAST_LEVELS, 'Medium')}
+              ${this._select('roastLevel', 'Roast level', ROAST_LEVELS)}
             </div>
           </fieldset>
 
           <fieldset>
             <legend>2. Configuration</legend>
             <div class="grid">
-              ${this._select('shots', 'Shots', ['1', '2'], '2')}
+              ${this._select('shots', 'Shots', ['1', '2'])}
               <div class="field">
                 <label for="machine">Machine (brand / model)</label>
-                <input id="machine" name="machine" type="text" placeholder="e.g. Breville Barista Pro" />
+                <input
+                  id="machine"
+                  type="text"
+                  placeholder="e.g. Breville Barista Pro"
+                  .value=${this._settings.machine}
+                  @input=${(e: Event) =>
+                    this._updateSetting('machine', (e.target as HTMLInputElement).value)}
+                />
               </div>
-              ${this._slider(
-                'waterTemperatureC',
-                'Water temperature',
-                90,
-                95,
-                0.5,
-                this._waterTemp,
-                '°C',
-                (v) => (this._waterTemp = v),
-              )}
+              ${this._slider('waterTemperatureC', 'Water temperature', 90, 95, 0.5, '°C')}
             </div>
           </fieldset>
 
           <fieldset>
             <legend>3. Extraction</legend>
             <div class="grid">
-              ${this._slider('doseGrams', 'Dose', 6, 26, 0.1, this._dose, 'g', (v) => (this._dose = v))}
-              ${this._slider('yieldGrams', 'Yield', 0, 40, 0.5, this._yield, 'g', (v) => (this._yield = v))}
-              ${this._slider('timeSeconds', 'Time', 0, 40, 1, this._time, 's', (v) => (this._time = v))}
+              ${this._slider('doseGrams', 'Dose', 6, 26, 0.1, 'g')}
+              ${this._slider('yieldGrams', 'Yield', 0, 40, 0.5, 'g')}
+              ${this._slider('timeSeconds', 'Time', 0, 40, 1, 's')}
             </div>
           </fieldset>
 
@@ -322,23 +408,26 @@ export class CoffeeAdvisorApp extends LitElement {
               <label for="resultDescription">What was the shot like?</label>
               <textarea
                 id="resultDescription"
-                name="resultDescription"
                 required
                 placeholder="e.g. Ran fast and tasted sour and thin, very little crema."
+                .value=${this._settings.resultDescription}
+                @input=${(e: Event) =>
+                  this._updateSetting('resultDescription', (e.target as HTMLTextAreaElement).value)}
               ></textarea>
             </div>
           </fieldset>
 
           <details
-            ?open=${this._advancedOpen}
-            @toggle=${(e: Event) => (this._advancedOpen = (e.target as HTMLDetailsElement).open)}
+            ?open=${this._settings.advancedOpen}
+            @toggle=${(e: Event) =>
+              this._updateSetting('advancedOpen', (e.target as HTMLDetailsElement).open)}
           >
             <summary>Advanced (optional sensory notes)</summary>
 
             <fieldset style="border:none;padding:0;margin:0;">
               <legend class="sr-only" style="font-weight:600;">5. Crema</legend>
               <div class="grid">
-                ${this._select('cremaColour', 'Crema colour', CREMA_COLOURS, 'Golden caramel')}
+                ${this._select('cremaColour', 'Crema colour', CREMA_COLOURS)}
                 ${this._select('cremaThickness', 'Crema thickness', CREMA_THICKNESS)}
                 ${this._select('cremaPersistence', 'Crema persistence', CREMA_PERSISTENCE)}
                 ${this._select('cremaTexture', 'Crema texture', CREMA_TEXTURE)}
@@ -373,9 +462,14 @@ export class CoffeeAdvisorApp extends LitElement {
             </fieldset>
           </details>
 
-          <button type="submit" ?disabled=${this._loading} aria-busy=${this._loading ? 'true' : 'false'}>
-            ${this._loading ? 'Assessing…' : 'Get recommendations'}
-          </button>
+          <div class="actions">
+            <button type="submit" ?disabled=${this._loading} aria-busy=${this._loading ? 'true' : 'false'}>
+              ${this._loading ? 'Assessing…' : 'Get recommendations'}
+            </button>
+            <button type="button" class="secondary" ?disabled=${this._loading} @click=${this._resetDefaults}>
+              Reset defaults
+            </button>
+          </div>
         </form>
 
         <div class="result" role="status" aria-live="polite">
@@ -392,48 +486,44 @@ export class CoffeeAdvisorApp extends LitElement {
     `;
   }
 
-  /** Renders a labelled <select> bound by name. */
-  private _select(
-    name: string,
-    label: string,
-    options: readonly string[],
-    selected?: string,
-  ): TemplateResult {
+  /** Renders a labelled <select> bound to a setting. */
+  private _select(name: keyof Settings, label: string, options: readonly string[]): TemplateResult {
+    const value = String(this._settings[name]);
     return html`
       <div class="field">
         <label for=${name}>${label}</label>
-        <select id=${name} name=${name}>
-          ${options.map(
-            (opt) => html`<option value=${opt} ?selected=${opt === selected}>${opt}</option>`,
-          )}
+        <select
+          id=${name}
+          .value=${value}
+          @change=${(e: Event) => this._updateSetting(name, (e.target as HTMLSelectElement).value)}
+        >
+          ${options.map((opt) => html`<option value=${opt} ?selected=${opt === value}>${opt}</option>`)}
         </select>
       </div>
     `;
   }
 
-  /** Renders a labelled range slider that shows its live value. */
+  /** Renders a labelled range slider bound to a numeric setting; shows its live value. */
   private _slider(
-    name: string,
+    name: keyof Settings,
     label: string,
     min: number,
     max: number,
     step: number,
-    value: number,
     unit: string,
-    onInput: (v: number) => void,
   ): TemplateResult {
+    const value = this._settings[name] as number;
     return html`
       <div class="field">
         <label for=${name}>${label}: <span class="value">${value} ${unit}</span></label>
         <input
           id=${name}
-          name=${name}
           type="range"
           min=${min}
           max=${max}
           step=${step}
           .value=${String(value)}
-          @input=${(e: Event) => onInput(Number((e.target as HTMLInputElement).value))}
+          @input=${(e: Event) => this._updateSetting(name, Number((e.target as HTMLInputElement).value))}
         />
       </div>
     `;
@@ -461,9 +551,7 @@ export class CoffeeAdvisorApp extends LitElement {
 
   private async _onSubmit(event: SubmitEvent) {
     event.preventDefault();
-    const form = event.currentTarget as HTMLFormElement;
-    const data = new FormData(form);
-    const payload = this._buildPayload(data);
+    const payload = this._buildPayload();
 
     this._loading = true;
     this._error = '';
@@ -501,57 +589,84 @@ export class CoffeeAdvisorApp extends LitElement {
     }
   }
 
-  /** Shapes the flat form data into the nested request the API expects. */
-  private _buildPayload(d: FormData) {
-    const str = (name: string) => d.get(name)?.toString().trim() || undefined;
-    const num = (name: string) => Number(d.get(name));
+  /** Shapes the current settings into the nested request the API expects. */
+  private _buildPayload() {
+    const s = this._settings;
+    const opt = (value: string) => value.trim() || undefined;
 
     const advanced = {
       crema: {
-        colour: str('cremaColour'),
-        thickness: str('cremaThickness'),
-        persistence: str('cremaPersistence'),
-        texture: str('cremaTexture'),
+        colour: opt(s.cremaColour),
+        thickness: opt(s.cremaThickness),
+        persistence: opt(s.cremaPersistence),
+        texture: opt(s.cremaTexture),
       },
       shot: {
-        initialDrip: str('initialDrip'),
-        blondingTiming: str('blondingTiming'),
+        initialDrip: opt(s.initialDrip),
+        blondingTiming: opt(s.blondingTiming),
       },
       aroma: {
-        quality: str('aromaQuality'),
-        intensity: str('aromaIntensity'),
+        quality: opt(s.aromaQuality),
+        intensity: opt(s.aromaIntensity),
       },
       tasteAndMouthfeel: {
-        sweetness: str('sweetness'),
-        acidity: str('acidity'),
-        bitterness: str('bitterness'),
-        body: str('body'),
-        aftertaste: str('aftertaste'),
+        sweetness: opt(s.sweetness),
+        acidity: opt(s.acidity),
+        bitterness: opt(s.bitterness),
+        body: opt(s.body),
+        aftertaste: opt(s.aftertaste),
       },
     };
 
     return {
       beans: {
-        roastDate: str('roastDate'),
-        roastLevel: str('roastLevel'),
+        roastDate: opt(s.roastDate),
+        roastLevel: opt(s.roastLevel),
       },
       configuration: {
-        shots: num('shots'),
-        machine: str('machine'),
-        waterTemperatureC: num('waterTemperatureC'),
+        shots: Number(s.shots),
+        machine: opt(s.machine),
+        waterTemperatureC: s.waterTemperatureC,
       },
       extraction: {
-        doseGrams: num('doseGrams'),
-        yieldGrams: num('yieldGrams'),
-        timeSeconds: num('timeSeconds'),
+        doseGrams: s.doseGrams,
+        yieldGrams: s.yieldGrams,
+        timeSeconds: s.timeSeconds,
       },
       result: {
-        description: str('resultDescription'),
+        description: opt(s.resultDescription),
       },
       // Only send the advanced block when the section is expanded; otherwise
       // pass null so the API (and prompt) treat all advanced fields as absent.
-      advanced: this._advancedOpen ? advanced : null,
+      advanced: s.advancedOpen ? advanced : null,
     };
+  }
+
+  // --- Settings persistence ---------------------------------------------------
+
+  /** Loads settings from localStorage, merged over defaults so new fields are filled in. */
+  private _loadSettings(): Settings {
+    try {
+      const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+      if (raw) {
+        return { ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as Partial<Settings>) };
+      }
+    } catch {
+      // Corrupt/unreadable storage — fall back to defaults.
+    }
+    return { ...DEFAULT_SETTINGS };
+  }
+
+  /** Updates one setting (immutably, so Lit re-renders) and persists everything. */
+  private _updateSetting(name: keyof Settings, value: string | number | boolean) {
+    this._settings = { ...this._settings, [name]: value };
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(this._settings));
+  }
+
+  /** Restores every field to its default value and persists the result. */
+  private _resetDefaults() {
+    this._settings = { ...DEFAULT_SETTINGS };
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(this._settings));
   }
 
   /**
