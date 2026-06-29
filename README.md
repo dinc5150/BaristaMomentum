@@ -38,7 +38,7 @@ curl -i -X POST http://localhost:7071/api/coffee/recommendations \
   -H "x-api-key: local-dev-secret-change-me" \
   -H "Content-Type: application/json" \
   -d '{
-    "beans": { "roastDate": "2026-06-20", "roastLevel": "Medium" },
+    "beans": { "daysOffRoast": 9, "roastLevel": "Medium" },
     "configuration": { "shots": 2, "machine": "Breville Barista Pro", "waterTemperatureC": 93 },
     "extraction": { "doseGrams": 18, "yieldGrams": 36, "timeSeconds": 22 },
     "result": { "description": "Sour and thin, ran fast with pale crema." }

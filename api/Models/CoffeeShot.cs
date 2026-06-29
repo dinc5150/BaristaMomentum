@@ -28,9 +28,9 @@ public sealed class CoffeeShotRequest
 
 public sealed class Beans
 {
-    /// <summary>Roast date as an ISO date string (yyyy-MM-dd).</summary>
-    [JsonPropertyName("roastDate")]
-    public string? RoastDate { get; set; }
+    /// <summary>Whole days between the roast date and brew day. Null if not provided.</summary>
+    [JsonPropertyName("daysOffRoast")]
+    public int? DaysOffRoast { get; set; }
 
     /// <summary>Light, Medium or Dark.</summary>
     [JsonPropertyName("roastLevel")]

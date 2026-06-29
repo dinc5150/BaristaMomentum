@@ -186,6 +186,11 @@ export class CoffeeAdvisorApp extends LitElement {
       color: var(--crema);
     }
 
+    .hint {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
     input,
     select,
     textarea {
@@ -396,6 +401,7 @@ export class CoffeeAdvisorApp extends LitElement {
                   @input=${(e: Event) =>
                     this._updateSetting('roastDate', (e.target as HTMLInputElement).value)}
                 />
+                ${this._renderDaysOffRoastHint()}
               </div>
               ${this._select('roastLevel', 'Roast level', ROAST_LEVELS)}
             </div>
@@ -432,7 +438,7 @@ export class CoffeeAdvisorApp extends LitElement {
           <fieldset>
             <legend>4. Result</legend>
             <div class="field">
-              <label for="resultDescription">What was the shot like?</label>
+              <label for="resultDescription">What was the shot like? Any other details?</label>
               <textarea
                 id="resultDescription"
                 required
@@ -647,7 +653,7 @@ export class CoffeeAdvisorApp extends LitElement {
 
     return {
       beans: {
-        roastDate: opt(s.roastDate),
+        daysOffRoast: this._daysOffRoast(s.roastDate),
         roastLevel: opt(s.roastLevel),
       },
       configuration: {
@@ -667,6 +673,30 @@ export class CoffeeAdvisorApp extends LitElement {
       // pass null so the API (and prompt) treat all advanced fields as absent.
       advanced: s.advancedOpen ? advanced : null,
     };
+  }
+
+  /**
+   * Whole days between the chosen roast date and today. Returns undefined when
+   * no/invalid date is set, or when the date is in the future.
+   */
+  private _daysOffRoast(roastDate: string): number | undefined {
+    if (!roastDate) return undefined;
+
+    const roast = new Date(`${roastDate}T00:00:00`);
+    if (Number.isNaN(roast.getTime())) return undefined;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const days = Math.round((today.getTime() - roast.getTime()) / 86_400_000);
+    return days >= 0 ? days : undefined;
+  }
+
+  /** Small caption echoing the computed days off roast that gets sent to the API. */
+  private _renderDaysOffRoastHint() {
+    const days = this._daysOffRoast(this._settings.roastDate);
+    if (days === undefined) return nothing;
+    return html`<span class="hint">${days} day${days === 1 ? '' : 's'} off roast</span>`;
   }
 
   // --- Settings persistence ---------------------------------------------------

@@ -126,7 +126,10 @@ public sealed class CoffeeAdvisorService : ICoffeeAdvisorService
         sb.AppendLine();
 
         sb.AppendLine("## Beans");
-        AppendIf(sb, "Roast date", r.Beans.RoastDate);
+        if (r.Beans.DaysOffRoast is { } days)
+        {
+            sb.AppendLine($"- Days off roast: {days}");
+        }
         AppendIf(sb, "Roast level", r.Beans.RoastLevel);
         sb.AppendLine();
 
