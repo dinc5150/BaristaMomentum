@@ -4,6 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Espresso Shot Advisor · Barista Momentum</title>
+
+    <!-- PWA: installable app metadata -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#6f4e37" />
+    <meta name="description" content="Describe your espresso shot and get AI recommendations to dial it in." />
+    <link rel="icon" type="image/png" href="/icons/favicon-64.png" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Espresso Advisor" />
     <style>
       body {
         margin: 0;
@@ -15,6 +25,7 @@
     </style>
   </head>
   <body>
+    <install-banner></install-banner>
     <coffee-advisor-app></coffee-advisor-app>
     <script type="module" src="/src/main.ts"></script>
   </body>
